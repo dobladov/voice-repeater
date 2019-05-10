@@ -1,14 +1,15 @@
 const init = async () => {
     Vue.component('card', {
-        props: ['image', 'foreign_curr', 'sound', 'index', 'record'],
+        props: ['image', 'foreign_curr', 'sound', 'index', 'record', 'native_curr', 'path'],
         template: `
             <div class="card">
                 <div class="cardMedia">
-                    <img :src='"./data/" + image' />
+                    <img :src='path + image' />
                     <div ref="waveform" class="wave">
                     </div>
                 </div>
                 <p>{{ foreign_curr }}</p>
+                <p>{{ native_curr }}</p>
                 <button @click="record" >Record</button>
             </div>
         `,
@@ -21,7 +22,7 @@ const init = async () => {
                 autoCenter: true
             })
 
-            wavesurfer.load("./data/" + this.$props.sound);
+            wavesurfer.load(this.$props.path + this.$props.sound);
 
             wavesurfer.on('error', (err) => {
                 console.log(err)
@@ -29,7 +30,7 @@ const init = async () => {
 
             wavesurfer.on('seek', () => {
                 if (!wavesurfer.isPlaying()) {
-                    wavesurfer.play() 
+                    wavesurfer.play()
                 }
             })
         }
@@ -40,7 +41,7 @@ const init = async () => {
         template: `
             <div class="uploadCSV">
                 <label for="upload" >Upload a CSV file</label>
-                <input ref="upload" @change="upload" type="file" accept="text/csv" id="upload" >
+                <input ref="upload" @change="upload" type="file" accept="text/csv" id="upload" webkitdirectory >
             </div>
         `,
     })
@@ -49,46 +50,26 @@ const init = async () => {
         el: '#app',
         data() {
             return {
-                cards: []
+                cards: [],
+                path: null
             }
         },
         methods: {
-            parseCSV: (csv) => {
-                let data = [];
-
-                let newLinebrk = csv.split("\n");
-                const titles = newLinebrk[0].split(',')
-                for(let i = 1; i < newLinebrk.length; i++) {
-                    const line = newLinebrk[i].split(",")
-                    const obj = {}
-                    titles.forEach((title, i) => {
-                        obj[title] = line[i]
-                    });
-                    data.push(obj)
-                }
-                return(data)
-            },
             upload: (el) => {
                 vm.cards = []
 
-                if (el.target.files && el.target.files[0]) {
-                    const myFile = el.target.files[0]
-                    const reader = new FileReader()
-                    
-                    reader.addEventListener('load', (e) => {
-                        let csvdata = e.target.result 
-                        const data = vm.parseCSV(csvdata)
-                        console.log(data)
-                        // vm.cards = data.slice(0, data.length-1)
-                        vm.cards = data.slice(0, 20)
-                    });
-                    
-                    reader.readAsText(myFile)
+                if (el.target.files) {
+                    const worker = new Worker('processFolder.js')
+                    worker.postMessage(el.target.files)
+                    worker.onmessage = (msg) => {
+                        vm.cards = msg.data.data
+                        vm.path = msg.data.path
+                    }
                 }
             },
             getMedia: async () => {
                 let stream = null
-            
+
                 try {
                     stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false })
                     console.log(stream)
@@ -111,6 +92,8 @@ const init = async () => {
                             :sound="element.sound.replace('[sound:', '').replace(']', '')"
                             :index="index"
                             :record="getMedia"
+                            :native_curr="element.native_curr"
+                            :path="path"
                         />
                     </li>
                 </ul>
