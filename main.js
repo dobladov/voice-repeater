@@ -22,6 +22,8 @@ const init = async () => {
                 autoCenter: true
             })
 
+            console.log('Audio path', this.$props.path + this.$props.sound)
+
             wavesurfer.load(this.$props.path + this.$props.sound);
 
             wavesurfer.on('error', (err) => {
@@ -89,7 +91,7 @@ const init = async () => {
                         <card
                             :image='element.image.replace(/"/g, "#").match(/##(.*)##/)[1]'
                             :foreign_curr="element.foreign_curr"
-                            :sound="element.sound.replace('[sound:', '').replace(']', '')"
+                            :sound="element.sound.replace('[sound:', '').replace(/]$/, '')"
                             :index="index"
                             :record="getMedia"
                             :native_curr="element.native_curr"
